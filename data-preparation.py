@@ -16,7 +16,6 @@ import pandas as pd
 pd.set_option('display.width', 1000)
 
 
-
 def save_sp500_tickers():
     """Step 1. Data Selection
     Getting tickers from S&P 500 companies, referencing the S&P 500 list from wikipedia.
@@ -46,8 +45,6 @@ def save_sp500_tickers():
         # Write a pickled representation of obj to the open file object file.
         pickle.dump(tickers, f)
 
-    # print(tickers)
-
     return tickers
 
 
@@ -70,8 +67,8 @@ def get_data_from_google(reload_sp500=False):
         os.mkdir('data')
 
     # Set start and end date range for pulling data
-    start = dt.datetime(2000, 1, 1)
-    end = dt.datetime(2017, 5, 29)
+    start = dt.datetime(2007, 6, 1)
+    end = dt.datetime(2017, 5, 31)
 
     for ticker in tickers:
         # 'ticker' is an items in 'tickers' list
@@ -89,7 +86,7 @@ def get_data_from_google(reload_sp500=False):
 
 def compile_data():
     """Step 2-2. Data Preprocessing - Integration / Cleaning
-    In this step, multiple csv files merged into one main csv file.
+    In this step, multiple csv files merged into main csv files.
     Compiling all the stock price into one data frame, and removing unnecessary columns.
     """
     with open('sp500tickers.pickle', 'rb') as f:
@@ -123,7 +120,7 @@ def compile_data():
     print(main_df.tail())
     main_df.to_csv('sp500-joined-closes.csv')
 
-    # Create sp500 joined csv file, including daily closes, High-Low pct. change, and Open-Close pct. change
+    # Create csv for daily close and trade volumes
     main_df = pd.DataFrame()
 
     for count, ticker in enumerate(tickers):
@@ -131,9 +128,9 @@ def compile_data():
             df = pd.read_csv('data/{}.csv'.format(ticker))
             df.set_index('Date', inplace=True)
             # Daily High-Low percentage difference per ticker
-            df['{}_HL_pct_diff'.format(ticker)] = (df['High'] - df['Low']) / df['Low']
+            # df['{}_HL_pct_diff'.format(ticker)] = (df['High'] - df['Low']) / df['Low']
             # Daily Close-Open percentage change per ticker
-            df['{}_daily_pct_chg'.format(ticker)] = (df['Close'] - df['Open']) / df['Open']
+            # df['{}_daily_pct_chg'.format(ticker)] = (df['Close'] - df['Open']) / df['Open']
             df.rename(columns={'Close': '{}_Close'.format(ticker)}, inplace=True)
             df.rename(columns={'Volume': '{}_Volume'.format(ticker)}, inplace=True)
             df.drop(['Open', 'High', 'Low'], 1, inplace=True)
@@ -149,6 +146,26 @@ def compile_data():
     main_df.to_csv('sp500-joined.csv')
 
     """
+    # Create csv for daily trade volumes per ticker
+    main_df = pd.DataFrame()
+
+    for count, ticker in enumerate(tickers):
+        try:
+            df = pd.read_csv('data/{}.csv'.format(ticker))
+            df.set_index('Date', inplace=True)
+            df.rename(columns={'Volume': ticker}, inplace=True)
+            df.drop(['Open', 'High', 'Low', 'Close'], 1, inplace=True)
+            if main_df.empty:
+                main_df = df
+            else:
+                main_df = main_df.join(df, how='outer')
+        except:
+            pass
+        if count % 10 == 0:
+            print(count)
+    print(main_df.tail())
+    main_df.to_csv('sp500-joined-volumes.csv')
+    
     # Create csv containing daily HL percentage change per ticker
     main_df = pd.DataFrame()
     for count, ticker in enumerate(tickers):
@@ -191,4 +208,4 @@ def compile_data():
 # save_sp500_tickers()
 # get_data_from_google()
 # compile_data()
-# visualize_corr()
+

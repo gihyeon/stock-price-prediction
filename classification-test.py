@@ -1,5 +1,4 @@
 from collections import Counter
-from datetime import datetime
 import pandas as pd
 import numpy as np
 from sklearn import svm, neighbors
@@ -16,7 +15,7 @@ def prep_manipulation(ticker):
     """Read S&P 500 close price data and manipulate and normalize for preprocessing
     """
     # How many days in the future we need prices for
-    days = 5
+    days = 7
     # Read daily close prices of all stocks, index is 'Date'
     df = pd.read_csv('sp500-joined-closes.csv', index_col=0)
     # Convert ticker column names into a list
@@ -29,6 +28,7 @@ def prep_manipulation(ticker):
         # Pct. change within next i days and today's price = (price in i days - today's price) / today's price
         # Shift index by -i periods (shift up the column by i rows)
         df['{}_{}D'.format(ticker, i)] = (df[ticker].shift(-i) - df[ticker]) / df[ticker]
+
 
     # Replace NA/NaN values by 0
     df.fillna(0, inplace=True)
@@ -64,7 +64,7 @@ def prep_map_labels(ticker):
     vals = df['{}_target'.format(ticker)].values.tolist()
     # Change vals integer into string
     str_vals = [str(i) for i in vals]
-    print('Target Label Counts:', Counter(str_vals))
+    print('Total Label Counts:', Counter(str_vals))
 
     # Cleaning data
     df.fillna(0, inplace=True)
@@ -76,7 +76,7 @@ def prep_map_labels(ticker):
     df_vals = df_vals.replace([np.inf, -np.inf], 0)
     df_vals.fillna(0, inplace=True)
 
-    # Features: daily pct. change of all S&P 500 stocks (may need to reduce no. of features, PCA analysis or clustering)
+    # Features: daily pct. change of all S&P 500 stocks
     X = df_vals.values
     # Target:
     y = df['{}_target'.format(ticker)].values
@@ -102,39 +102,23 @@ def classification(ticker):
 
     params = {}
 
-    """
-    #PCA
+    # PCA
     pca = PCA(n_components=10)
     pca.fit(X_train)
     X_train = pca.transform(X_train)
     pca.fit(X_test)
     X_test = pca.transform(X_test)
-    """
 
-    grid = GridSearchCV(estimator=eclf, param_grid=params, cv=5)
+    grid = GridSearchCV(estimator=eclf, param_grid=params, cv=10)
     grid = grid.fit(X_train, y_train)
 
-    """
-    tscv = TimeSeriesSplit(n_splits=3)
-    for train_index, test_index in tscv.split(X):
-        print("TRAIN:", train_index, "TEST:", test_index)
-        X_train, X_test = X[train_index], X[test_index]
-        y_train, y_test = y[train_index], y[test_index]
-    """
-
-    # eclf.fit(X_train, y_train)
-    # use for loop for testing each classifiers
-
     predictions = grid.predict(X_test)
-    print('Predicted Target Label Counts:', Counter(predictions))
+    print('Predicted Label Counts on Test:', Counter(predictions))
 
     accuracy = grid.score(X_test, y_test)
     print('Accuracy:', accuracy)
 
     return accuracy
-
-    # need to add precision-recall curve
-    # http://scikit-learn.org/stable/auto_examples/model_selection/plot_precision_recall.html
 
 
 def classification_all():
@@ -142,11 +126,10 @@ def classification_all():
     """
     df = pd.read_csv('sp500-joined-closes.csv', index_col=0)
     tickers = df.columns.values.tolist()
-    print(tickers)
 
     accuracies = []
 
-    for count, ticker in tickers:
+    for count, ticker in enumerate(tickers):
         try:
             accuracy = classification(ticker)
             accuracies.append(accuracy)
@@ -158,8 +141,16 @@ def classification_all():
     print("Average accuracy ({} stocks): {}".format(count, mean(accuracies)))
 
 
-start = datetime.now()
-classification('AMZN')
-print(datetime.now() - start)
 
-# classification_all()  # need to set n_jobs params
+big5 = ['AAPL', 'AMZN', 'FB', 'GOOG', 'GOOGL', 'MSFT']
+big5_accuracies = []
+for b in big5:
+    big5_accuracies.append(classification(f"{b}"))
+print("Average Accuracy on Big 5:", mean(big5_accuracies))
+
+
+
+
+
+
+# classification_all()

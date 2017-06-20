@@ -3,13 +3,15 @@ import numpy as np
 import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib import style
 import os
 
+style.use('ggplot')
 tf.set_random_seed(777)  # reproducibility
 
 if "DISPLAY" not in os.environ:
     # remove Travis CI Error
-    matplotlib.use('Agg')
+    matplotlib.use('ggplot')
 
 
 def MinMaxScaler(data):
@@ -36,10 +38,10 @@ def MinMaxScaler(data):
 # train Parameters
 seq_length = 7
 data_dim = 5
-hidden_dim = 10
+hidden_dim = 100
 output_dim = 1
 learning_rate = 0.01
-iterations = 500
+iterations = 1000
 
 # Open, High, Low, Volume, Close
 df = pd.read_csv('data/AMZN.csv')
@@ -83,7 +85,7 @@ loss = tf.reduce_sum(tf.square(Y_pred - Y))  # sum of the squares
 optimizer = tf.train.AdamOptimizer(learning_rate)
 train = optimizer.minimize(loss)
 
-# RMSE
+# Root Mean Squared Error (RMSE)
 targets = tf.placeholder(tf.float32, [None, 1])
 predictions = tf.placeholder(tf.float32, [None, 1])
 rmse = tf.sqrt(tf.reduce_mean(tf.square(targets - predictions)))
@@ -107,7 +109,5 @@ with tf.Session() as sess:
     # Plot predictions
     plt.plot(testY)
     plt.plot(test_predict)
-    plt.xlabel("Time Period")
-    plt.ylabel("Stock Price")
     plt.legend(['testY', 'test_predict'])
     plt.show()
